@@ -58,14 +58,21 @@ static void modbus_serial_rx_on(struct modbus_context *ctx)
 		gpio_pin_set(cfg->re->port, cfg->re->pin, 1);
 	}
 
+	unsigned int key = irq_lock();
+	ctx->rxOn = true;
 	uart_irq_rx_enable(cfg->dev);
+	irq_unlock(key);
 }
 
 static void modbus_serial_rx_off(struct modbus_context *ctx)
 {
 	struct modbus_serial_config *cfg = ctx->cfg;
 
+	unsigned int key = irq_lock();
 	uart_irq_rx_disable(cfg->dev);
+	ctx->rxOn = false;
+	irq_unlock(key);
+
 	if (cfg->re != NULL) {
 		gpio_pin_set(cfg->re->port, cfg->re->pin, 0);
 	}
@@ -352,6 +359,17 @@ static void cb_handler_rx(struct modbus_context *ctx)
 	}
 }
 
+void drive_disable(struct k_work *item)
+{
+	struct modbus_context *ctx = CONTAINER_OF(item, struct modbus_context, drive_disable_work);
+	modbus_serial_tx_off(ctx);
+
+	struct modbus_serial_config *cfg = ctx->cfg;
+	// Flush inpuit FIFO before enabling read. FIFO contains now what we've sent.
+	uart_fifo_read(cfg->dev, cfg->uart_buf_ptr, CONFIG_MODBUS_BUFFER_SIZE);
+	modbus_serial_rx_on(ctx);
+}
+
 static void cb_handler_tx(struct modbus_context *ctx)
 {
 	struct modbus_serial_config *cfg = ctx->cfg;
@@ -372,8 +390,16 @@ static void cb_handler_tx(struct modbus_context *ctx)
 	if (uart_irq_tx_complete(cfg->dev)) {
 		/* Disable transmission */
 		cfg->uart_buf_ptr = &cfg->uart_buf[0];
-		modbus_serial_tx_off(ctx);
-		modbus_serial_rx_on(ctx);
+		// modbus_serial_tx_off(ctx);
+		// modbus_serial_rx_on(ctx);
+
+		/*
+		 * First disable the IRQ. modbus_serial_tx_off does that, but we can't reach it
+		 * because drive_disable that would otherwise be called is preempted by the IRQ
+		 * which is constantly active. At the end we are stuck here.
+		 */
+		uart_irq_tx_disable(cfg->dev);
+		k_work_submit(&ctx->drive_disable_work);
 	}
 }
 
@@ -391,7 +417,7 @@ static void uart_cb_handler(const struct device *dev, void *app_data)
 
 	if (uart_irq_update(cfg->dev) && uart_irq_is_pending(cfg->dev)) {
 
-		if (uart_irq_rx_ready(cfg->dev)) {
+		if (ctx->rxOn && uart_irq_rx_ready(cfg->dev)) {
 			cb_handler_rx(ctx);
 		}
 
@@ -506,6 +532,9 @@ int modbus_serial_init(struct modbus_context *ctx,
 	const uint32_t if_delay_max = 3500000;
 	const uint32_t numof_bits = 11;
 	struct uart_config uart_cfg;
+
+    k_work_init(&ctx->drive_disable_work, drive_disable);
+	ctx->rxOn = true;
 
 	switch (param.mode) {
 	case MODBUS_MODE_RTU:

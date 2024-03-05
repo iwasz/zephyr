@@ -134,7 +134,8 @@ struct modbus_context {
 	sys_slist_t user_defined_cbs;
 	/* Unit ID */
 	uint8_t unit_id;
-
+    struct k_work drive_disable_work;
+    bool rxOn;
 };
 
 /**
