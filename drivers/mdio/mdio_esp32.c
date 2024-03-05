@@ -16,6 +16,8 @@
 #include <esp_mac.h>
 #include <hal/emac_hal.h>
 #include <hal/emac_ll.h>
+#include <esp_attr.h>
+#include <soc/rtc.h>
 
 LOG_MODULE_REGISTER(mdio_esp32, CONFIG_MDIO_LOG_LEVEL);
 
@@ -124,6 +126,14 @@ static int mdio_esp32_initialize(const struct device *dev)
 
 	/* Init MDIO clock */
 	emac_hal_set_csr_clock_range(&dev_data->hal, esp_clk_apb_freq());
+// #if DT_INST_NODE_HAS_PROP(0, ref_clk_output_gpios)
+	// int ref_clk_gpio = DT_INST_GPIO_PIN(0, ref_clk_output_gpios);
+	emac_hal_init(&dev_data->hal, NULL, NULL, NULL);
+	emac_hal_iomux_init_rmii();
+	emac_hal_iomux_rmii_clk_output(/* ref_clk_gpio */17);
+	emac_ll_clock_enable_rmii_output(dev_data->hal.ext_regs);
+	rtc_clk_apll_enable(true, 0, 0, 6, 2);
+// #endif
 
 	return 0;
 
