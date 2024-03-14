@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2024 Łukasz Iwaszkiewicz
+# Author: Łukasz Iwaszkiewicz <lukasz.iwaszkiewicz@gmail.com>
+
+description: Micro Crystal RV-3032-C7 RTC
+
+compatible: "microcrystal,rv3032c7"
+
+include:
+  - name: rtc-device.yaml
+  - name: i2c-device.yaml
+
+properties:
+  reg:
+    required: true
+
+  int-gpios:
+    type: phandle-array
+    description: |
+      GPIO connected to the RV3032C7 INT1 interrupt output. This signal is open-drain, active low.
