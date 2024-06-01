@@ -24,8 +24,10 @@ extern "C" {
 #define TX_BUF_SIZE CONFIG_SHELL_MQTT_TX_BUF_SIZE
 #define SH_MQTT_BUFFER_SIZE 64
 #define DEVICE_ID_BIN_MAX_SIZE 3
-#define DEVICE_ID_HEX_MAX_SIZE ((DEVICE_ID_BIN_MAX_SIZE * 2) + 1)
-#define SH_MQTT_TOPIC_MAX_SIZE DEVICE_ID_HEX_MAX_SIZE + 3
+#define DEVICE_ID_HEX_MAX_SIZE 32
+#define SH_MQTT_TOPIC_MAX_SIZE 64
+#define SH_MQTT_SERV_ADDR_MAX_SIZE 64
+#define SH_MQTT_SERV_PORT_MAX_SIZE 6
 
 extern const struct shell_transport_api shell_mqtt_transport_api;
 

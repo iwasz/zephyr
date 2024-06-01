@@ -91,6 +91,18 @@ bool __weak shell_mqtt_get_devid(char *id, int id_max_len)
 	return length > 0;
 }
 
+bool __weak shell_mqtt_get_pub_topic(char *topic, int max_len)
+{
+	(void)snprintf(topic, SH_MQTT_TOPIC_MAX_SIZE, "%s_tx", sh_mqtt->device_id);
+	return true;
+}
+
+bool __weak shell_mqtt_get_sub_topic(char *topic, int max_len)
+{
+	(void)snprintf(topic, SH_MQTT_TOPIC_MAX_SIZE, "%s_rx", sh_mqtt->device_id);
+	return true;
+}
+
 static void prepare_fds(void)
 {
 	if (sh_mqtt->mqtt_cli.transport.type == MQTT_TRANSPORT_NON_SECURE) {
@@ -127,6 +139,18 @@ static int wait(int timeout)
 	return rc;
 }
 
+bool __weak shell_mqtt_get_server_address(char *addr, int max_len)
+{
+	strncpy(addr, CONFIG_SHELL_MQTT_SERVER_ADDR, max_len);
+	return true;
+}
+
+bool __weak shell_mqtt_get_server_port(char *port, int max_len)
+{
+	strncpy(port, STRINGIFY(CONFIG_SHELL_MQTT_SERVER_PORT), max_len);
+	return true;
+}
+
 /* Query IP address for the broker URL */
 static int get_mqtt_broker_addrinfo(void)
 {
@@ -139,16 +163,21 @@ static int get_mqtt_broker_addrinfo(void)
 		zsock_freeaddrinfo(sh_mqtt->haddr);
 	}
 
-	rc = zsock_getaddrinfo(CONFIG_SHELL_MQTT_SERVER_ADDR,
-			       STRINGIFY(CONFIG_SHELL_MQTT_SERVER_PORT), &hints, &sh_mqtt->haddr);
+	char server_addr[SH_MQTT_SERV_ADDR_MAX_SIZE];
+	shell_mqtt_get_server_address(server_addr, sizeof(server_addr));
+
+	char server_port[SH_MQTT_SERV_PORT_MAX_SIZE];
+	shell_mqtt_get_server_port(server_port, sizeof(server_port));
+
+	rc = zsock_getaddrinfo(server_addr, server_port, &hints, &sh_mqtt->haddr);
+
 	if (rc == 0) {
-		LOG_INF("DNS%s resolved for %s:%d", "", CONFIG_SHELL_MQTT_SERVER_ADDR,
-			CONFIG_SHELL_MQTT_SERVER_PORT);
+		LOG_INF("DNS%s resolved for %s:%d", "", server_addr, CONFIG_SHELL_MQTT_SERVER_PORT);
 
 		return 0;
 	}
 
-	LOG_ERR("DNS%s resolved for %s:%d, retrying", " not", CONFIG_SHELL_MQTT_SERVER_ADDR,
+	LOG_ERR("DNS%s resolved for %s:%d, retrying", " not", server_addr,
 		CONFIG_SHELL_MQTT_SERVER_PORT);
 
 	return rc;
@@ -657,8 +686,8 @@ static int init(const struct shell_transport *transport, const void *config,
 
 	LOG_DBG("Client ID is %s", sh_mqtt->device_id);
 
-	(void)snprintf(sh_mqtt->pub_topic, SH_MQTT_TOPIC_MAX_SIZE, "%s_tx", sh_mqtt->device_id);
-	(void)snprintf(sh_mqtt->sub_topic, SH_MQTT_TOPIC_MAX_SIZE, "%s_rx", sh_mqtt->device_id);
+	shell_mqtt_get_pub_topic(sh_mqtt->pub_topic, SH_MQTT_TOPIC_MAX_SIZE);
+	shell_mqtt_get_sub_topic(sh_mqtt->sub_topic, SH_MQTT_TOPIC_MAX_SIZE);
 
 	ring_buf_init(&sh_mqtt->rx_rb, RX_RB_SIZE, sh_mqtt->rx_rb_buf);
 
