@@ -112,7 +112,7 @@ static int modbus_ascii_rx_adu(struct modbus_context *ctx)
 	uint8_t frame_lrc;
 	uint8_t calc_lrc;
 
-	rx_size =  cfg->uart_buf_ctr;
+	rx_size = cfg->uart_buf_ctr;
 	prx_data = &ctx->rx_adu.data[0];
 
 	if (!(rx_size & 0x01)) {
@@ -165,8 +165,7 @@ static int modbus_ascii_rx_adu(struct modbus_context *ctx)
 	 * by the sender. We thus need to subtract 5 'ASCII' characters
 	 * from the received message to exclude these.
 	 */
-	calc_lrc = modbus_ascii_get_lrc(&cfg->uart_buf[1],
-					(cfg->uart_buf_ctr - 5) / 2);
+	calc_lrc = modbus_ascii_get_lrc(&cfg->uart_buf[1], (cfg->uart_buf_ctr - 5) / 2);
 
 	if (calc_lrc != frame_lrc) {
 		LOG_ERR("Calculated LRC does not match received LRC");
@@ -273,8 +272,7 @@ static int modbus_rtu_rx_adu(struct modbus_context *ctx)
 
 	ctx->rx_adu.crc = sys_get_le16(&cfg->uart_buf[crc_idx]);
 	/* Calculate CRC over address, function code, and payload */
-	calc_crc = crc16_ansi(&cfg->uart_buf[0],
-			      cfg->uart_buf_ctr - sizeof(ctx->rx_adu.crc));
+	calc_crc = crc16_ansi(&cfg->uart_buf[0], cfg->uart_buf_ctr - sizeof(ctx->rx_adu.crc));
 
 	if (ctx->rx_adu.crc != calc_crc) {
 		LOG_WRN("Calculated CRC does not match received CRC");
@@ -298,8 +296,7 @@ static void rtu_tx_adu(struct modbus_context *ctx)
 	memcpy(data_ptr, ctx->tx_adu.data, ctx->tx_adu.length);
 
 	ctx->tx_adu.crc = crc16_ansi(&cfg->uart_buf[0], ctx->tx_adu.length + 2);
-	sys_put_le16(ctx->tx_adu.crc,
-		     &cfg->uart_buf[ctx->tx_adu.length + 2]);
+	sys_put_le16(ctx->tx_adu.crc, &cfg->uart_buf[ctx->tx_adu.length + 2]);
 	tx_bytes += 2;
 
 	cfg->uart_buf_ctr = tx_bytes;
@@ -319,8 +316,7 @@ static void cb_handler_rx(struct modbus_context *ctx)
 {
 	struct modbus_serial_config *cfg = ctx->cfg;
 
-	if ((ctx->mode == MODBUS_MODE_ASCII) &&
-	    IS_ENABLED(CONFIG_MODBUS_ASCII_MODE)) {
+	if ((ctx->mode == MODBUS_MODE_ASCII) && IS_ENABLED(CONFIG_MODBUS_ASCII_MODE)) {
 		uint8_t c;
 
 		if (uart_fifo_read(cfg->dev, &c, 1) != 1) {
@@ -347,12 +343,10 @@ static void cb_handler_rx(struct modbus_context *ctx)
 		int n;
 
 		/* Restart timer on a new character */
-		k_timer_start(&cfg->rtu_timer,
-			      K_USEC(cfg->rtu_timeout), K_NO_WAIT);
+		k_timer_start(&cfg->rtu_timer, K_USEC(cfg->rtu_timeout), K_NO_WAIT);
 
 		n = uart_fifo_read(cfg->dev, cfg->uart_buf_ptr,
-				   (CONFIG_MODBUS_BUFFER_SIZE -
-				    cfg->uart_buf_ctr));
+				   (CONFIG_MODBUS_BUFFER_SIZE - cfg->uart_buf_ctr));
 
 		cfg->uart_buf_ptr += n;
 		cfg->uart_buf_ctr += n;
@@ -376,8 +370,7 @@ static void cb_handler_tx(struct modbus_context *ctx)
 	int n;
 
 	if (cfg->uart_buf_ctr > 0) {
-		n = uart_fifo_fill(cfg->dev, cfg->uart_buf_ptr,
-				   cfg->uart_buf_ctr);
+		n = uart_fifo_fill(cfg->dev, cfg->uart_buf_ptr, cfg->uart_buf_ctr);
 		cfg->uart_buf_ctr -= n;
 		cfg->uart_buf_ptr += n;
 		return;
@@ -456,7 +449,6 @@ static int configure_gpio(struct modbus_context *ctx)
 		}
 	}
 
-
 	if (cfg->re != NULL) {
 		if (!device_is_ready(cfg->re->port)) {
 			return -ENODEV;
@@ -525,15 +517,14 @@ int modbus_serial_tx_adu(struct modbus_context *ctx)
 	return -ENOTSUP;
 }
 
-int modbus_serial_init(struct modbus_context *ctx,
-		       struct modbus_iface_param param)
+int modbus_serial_init(struct modbus_context *ctx, struct modbus_iface_param param)
 {
 	struct modbus_serial_config *cfg = ctx->cfg;
 	const uint32_t if_delay_max = 3500000;
 	const uint32_t numof_bits = 11;
 	struct uart_config uart_cfg;
 
-    k_work_init(&ctx->drive_disable_work, drive_disable);
+	k_work_init(&ctx->drive_disable_work, drive_disable);
 	ctx->rxOn = true;
 
 	switch (param.mode) {
@@ -550,8 +541,7 @@ int modbus_serial_init(struct modbus_context *ctx,
 		return -ENODEV;
 	}
 
-	uart_cfg.baudrate = param.serial.baud,
-	uart_cfg.flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
+	uart_cfg.baudrate = param.serial.baud, uart_cfg.flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
 
 	if (ctx->mode == MODBUS_MODE_ASCII) {
 		uart_cfg.data_bits = UART_CFG_DATA_BITS_7;
@@ -594,8 +584,7 @@ int modbus_serial_init(struct modbus_context *ctx,
 	}
 
 	if (param.serial.baud <= 38400) {
-		cfg->rtu_timeout = (numof_bits * if_delay_max) /
-				   param.serial.baud;
+		cfg->rtu_timeout = (numof_bits * if_delay_max) / param.serial.baud;
 	} else {
 		cfg->rtu_timeout = (numof_bits * if_delay_max) / 38400;
 	}

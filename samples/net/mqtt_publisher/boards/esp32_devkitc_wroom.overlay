@@ -1,0 +1,29 @@
+&pinctrl {
+	mdio_default: mdio_default {
+		group1 {
+			pinmux = <SMI_MDC_GPIO23>,
+					 <SMI_MDIO_GPIO18>;
+		};
+	};
+};
+
+
+
+&mdio {
+	pinctrl-0 = <&mdio_default>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	phy: phy@1 {
+		compatible = "ethernet-phy";
+		status = "okay";
+		reg = <1>;
+	};
+};
+
+&eth {
+	phy-handle = <&phy>;
+	status = "okay";
+	ref-clk-output-gpios = <&gpio0 17 0>;
+	phy-connection-type = "rmii";
+};

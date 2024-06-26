@@ -12,6 +12,9 @@
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
 
 #include <esp_mac.h>
 #include <hal/emac_hal.h>
@@ -123,17 +126,28 @@ static int mdio_esp32_initialize(const struct device *dev)
 
 	/* Only the mac registers are required for MDIO */
 	dev_data->hal.mac_regs = &EMAC_MAC;
+	
+	// static const struct gpio_dt_spec nrst = GPIO_DT_SPEC_GET(DT_ALIAS(nrst), gpios);
+	static const struct gpio_dt_spec nrst = GPIO_DT_SPEC_GET(DT_PATH(output_pins, phy_nrst), gpios);
+	gpio_pin_configure_dt(&nrst, GPIO_OUTPUT | nrst.dt_flags);
+	gpio_pin_set_dt(&nrst, 1);
 
-	/* Init MDIO clock */
-	emac_hal_set_csr_clock_range(&dev_data->hal, esp_clk_apb_freq());
 // #if DT_INST_NODE_HAS_PROP(0, ref_clk_output_gpios)
 	// int ref_clk_gpio = DT_INST_GPIO_PIN(0, ref_clk_output_gpios);
+
+	/* Init MDIO clock */
 	emac_hal_init(&dev_data->hal, NULL, NULL, NULL);
-	emac_hal_iomux_init_rmii();
+	emac_hal_set_csr_clock_range(&dev_data->hal, esp_clk_apb_freq());
+    emac_hal_iomux_init_rmii();
+
 	emac_hal_iomux_rmii_clk_output(/* ref_clk_gpio */17);
-	emac_ll_clock_enable_rmii_output(dev_data->hal.ext_regs);
 	rtc_clk_apll_enable(true, 0, 0, 6, 2);
+	emac_ll_clock_enable_rmii_output(dev_data->hal.ext_regs);
+
+	k_sleep (K_MSEC(10));
+	gpio_pin_set_dt(&nrst, 0);	
 // #endif
+
 
 	return 0;
 
