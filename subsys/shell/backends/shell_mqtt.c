@@ -145,10 +145,15 @@ bool __weak shell_mqtt_get_server_address(char *addr, int max_len)
 	return true;
 }
 
-bool __weak shell_mqtt_get_server_port(char *port, int max_len)
+// bool __weak shell_mqtt_get_server_port(char *port, int max_len)
+// {
+// 	strncpy(port, STRINGIFY(CONFIG_SHELL_MQTT_SERVER_PORT), max_len);
+// 	return true;
+// }
+
+uint16_t __weak shell_mqtt_get_server_port()
 {
-	strncpy(port, STRINGIFY(CONFIG_SHELL_MQTT_SERVER_PORT), max_len);
-	return true;
+	return CONFIG_SHELL_MQTT_SERVER_PORT;
 }
 
 /* Query IP address for the broker URL */
@@ -165,14 +170,12 @@ static int get_mqtt_broker_addrinfo(void)
 
 	char server_addr[SH_MQTT_SERV_ADDR_MAX_SIZE];
 	shell_mqtt_get_server_address(server_addr, sizeof(server_addr));
+	uint16_t server_port = shell_mqtt_get_server_port();
 
-	char server_port[SH_MQTT_SERV_PORT_MAX_SIZE];
-	shell_mqtt_get_server_port(server_port, sizeof(server_port));
-
-	rc = zsock_getaddrinfo(server_addr, server_port, &hints, &sh_mqtt->haddr);
+	rc = zsock_getaddrinfo(server_addr, STRINGIFY(CONFIG_SHELL_MQTT_SERVER_PORT), &hints, &sh_mqtt->haddr);
 
 	if (rc == 0) {
-		LOG_INF("DNS%s resolved for %s:%d", "", server_addr, CONFIG_SHELL_MQTT_SERVER_PORT);
+		LOG_INF("DNS%s resolved for %s:%d", "", server_addr, server_port);
 
 		return 0;
 	}
@@ -216,7 +219,7 @@ static void broker_init(void)
 	struct sockaddr_in *broker4 = (struct sockaddr_in *)&sh_mqtt->broker;
 
 	broker4->sin_family = AF_INET;
-	broker4->sin_port = htons(CONFIG_SHELL_MQTT_SERVER_PORT);
+	broker4->sin_port = htons(shell_mqtt_get_server_port());
 
 	net_ipaddr_copy(&broker4->sin_addr, &net_sin(sh_mqtt->haddr->ai_addr)->sin_addr);
 }
@@ -692,6 +695,8 @@ static int init(const struct shell_transport *transport, const void *config,
 	ring_buf_init(&sh_mqtt->rx_rb, RX_RB_SIZE, sh_mqtt->rx_rb_buf);
 
 	LOG_DBG("Initializing shell MQTT backend");
+	LOG_INF("Shell MQTT pub: %s", sh_mqtt->pub_topic);
+	LOG_INF("Shell MQTT sub: %s", sh_mqtt->sub_topic);
 
 	sh_mqtt->shell_handler = evt_handler;
 	sh_mqtt->shell_context = context;
